@@ -1,94 +1,75 @@
 const express = require('express');
+const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+const { v4: generarUUID } = require('uuid');
 
-const productsFilePath = path.join(__dirname, '../data/products.json');
+const rutaArchivoProductos = path.join(__dirname, '../data/products.json');
 
-const getProducts = () => {
-  const data = fs.readFileSync(productsFilePath);
-  return JSON.parse(data);
-};
-
-const saveProducts = (products) => {
-  fs.writeFileSync(productsFilePath, JSON.stringify(products, null, 2));
-};
-
+// Listar todos los productos
 router.get('/', (req, res) => {
-  const limit = req.query.limit;
-  let products = getProducts();
-  if (limit) {
-    products = products.slice(0, limit);
-  }
-  res.json(products);
+  const { limite } = req.query;
+  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
+    if (err) return res.status(500).send('Error al leer el archivo de productos');
+    let productos = JSON.parse(datos);
+    if (limite) productos = productos.slice(0, parseInt(limite, 10));
+    res.json(productos);
+  });
 });
 
-router.get('/:pid', (req, res) => {
-  const products = getProducts();
-  const product = products.find(p => p.id === req.params.pid);
-  if (product) {
-    res.json(product);
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
+// Obtener producto por ID
+router.get('/:idProducto', (req, res) => {
+  const { idProducto } = req.params;
+  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
+    if (err) return res.status(500).send('Error al leer el archivo de productos');
+    const productos = JSON.parse(datos);
+    const producto = productos.find(p => p.id === idProducto);
+    if (!producto) return res.status(404).send('Producto no encontrado');
+    res.json(producto);
+  });
 });
 
+// Agregar un nuevo producto
 router.post('/', (req, res) => {
-  const { title, description, code, price, status = true, stock, category, thumbnails = [] } = req.body;
-  if (!title || !description || !code || !price || !stock || !category) {
-    return res.status(400).json({ error: 'All fields except thumbnails are required' });
-  }
-  const newProduct = {
-    id: uuidv4(),
-    title,
-    description,
-    code,
-    price,
-    status,
-    stock,
-    category,
-    thumbnails
-  };
-  const products = getProducts();
-  products.push(newProduct);
-  saveProducts(products);
-  res.status(201).json(newProduct);
+  const productoNuevo = { ...req.body, id: generarUUID(), estado: true };
+  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
+    if (err) return res.status(500).send('Error al leer el archivo de productos');
+    const productos = JSON.parse(datos);
+    productos.push(productoNuevo);
+    fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
+      if (err) return res.status(500).send('Error al guardar el producto');
+      res.status(201).json(productoNuevo);
+    });
+  });
 });
 
-router.put('/:pid', (req, res) => {
-  const { title, description, code, price, status, stock, category, thumbnails } = req.body;
-  const products = getProducts();
-  const productIndex = products.findIndex(p => p.id === req.params.pid);
-  if (productIndex !== -1) {
-    const product = products[productIndex];
-    products[productIndex] = {
-      ...product,
-      title: title !== undefined ? title : product.title,
-      description: description !== undefined ? description : product.description,
-      code: code !== undefined ? code : product.code,
-      price: price !== undefined ? price : product.price,
-      status: status !== undefined ? status : product.status,
-      stock: stock !== undefined ? stock : product.stock,
-      category: category !== undefined ? category : product.category,
-      thumbnails: thumbnails !== undefined ? thumbnails : product.thumbnails
-    };
-    saveProducts(products);
-    res.json(products[productIndex]);
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
+// Actualizar un producto
+router.put('/:idProducto', (req, res) => {
+  const { idProducto } = req.params;
+  const productoActualizado = req.body;
+  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
+    if (err) return res.status(500).send('Error al leer el archivo de productos');
+    let productos = JSON.parse(datos);
+    productos = productos.map(p => (p.id === idProducto ? { ...p, ...productoActualizado } : p));
+    fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
+      if (err) return res.status(500).send('Error al guardar el producto');
+      res.json({ id: idProducto, ...productoActualizado });
+    });
+  });
 });
 
-router.delete('/:pid', (req, res) => {
-  const products = getProducts();
-  const newProducts = products.filter(p => p.id !== req.params.pid);
-  if (newProducts.length !== products.length) {
-    saveProducts(newProducts);
-    res.status(204).send();
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
+// Eliminar un producto
+router.delete('/:idProducto', (req, res) => {
+  const { idProducto } = req.params;
+  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
+    if (err) return res.status(500).send('Error al leer el archivo de productos');
+    let productos = JSON.parse(datos);
+    productos = productos.filter(p => p.id !== idProducto);
+    fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
+      if (err) return res.status(500).send('Error al guardar el producto');
+      res.status(204).send();
+    });
+  });
 });
 
 module.exports = router;

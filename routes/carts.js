@@ -1,29 +1,23 @@
 const express = require('express');
+const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+const { v4: generarUUID } = require('uuid');
 
-const cartsFilePath = path.join(__dirname, '../data/carts.json');
+const rutaArchivoCarritos = path.join(__dirname, '../data/carts.json');
 
-const getCarts = () => {
-  const data = fs.readFileSync(cartsFilePath);
-  return JSON.parse(data);
-};
-
-const saveCarts = (carts) => {
-  fs.writeFileSync(cartsFilePath, JSON.stringify(carts, null, 2));
-};
-
+// Crear un nuevo carrito
 router.post('/', (req, res) => {
-  const newCart = {
-    id: uuidv4(),
-    products: []
-  };
-  const carts = getCarts();
-  carts.push(newCart);
-  saveCarts(carts);
-  res.status(201).json(newCart);
+  const carritoNuevo = { id: generarUUID(), productos: [] };
+  fs.readFile(rutaArchivoCarritos, 'utf8', (err, datos) => {
+    if (err) return res.status(500).send('Error al leer el archivo de carritos');
+    const carritos = JSON.parse(datos);
+    carritos.push(carritoNuevo);
+    fs.writeFile(rutaArchivoCarritos, JSON.stringify(carritos, null, 2), (err) => {
+      if (err) return res.status(500).send('Error al guardar el carrito');
+      res.status(201).json(carritoNuevo);
+    });
+  });
 });
 
 module.exports = router;
