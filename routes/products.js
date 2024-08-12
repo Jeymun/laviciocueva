@@ -6,7 +6,6 @@ const { v4: generarUUID } = require('uuid');
 
 const rutaArchivoProductos = path.join(__dirname, '../data/products.json');
 
-// Listar todos los productos
 router.get('/', (req, res) => {
   const { limite } = req.query;
   fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
@@ -17,7 +16,6 @@ router.get('/', (req, res) => {
   });
 });
 
-// Obtener producto por ID
 router.get('/:idProducto', (req, res) => {
   const { idProducto } = req.params;
   fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
@@ -29,7 +27,6 @@ router.get('/:idProducto', (req, res) => {
   });
 });
 
-// Agregar un nuevo producto
 router.post('/', (req, res) => {
   const productoNuevo = { ...req.body, id: generarUUID(), estado: true };
   fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
@@ -38,12 +35,12 @@ router.post('/', (req, res) => {
     productos.push(productoNuevo);
     fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
       if (err) return res.status(500).send('Error al guardar el producto');
+      req.app.get('io').emit('actualizarProductos', productos);
       res.status(201).json(productoNuevo);
     });
   });
 });
 
-// Actualizar un producto
 router.put('/:idProducto', (req, res) => {
   const { idProducto } = req.params;
   const productoActualizado = req.body;
@@ -53,12 +50,12 @@ router.put('/:idProducto', (req, res) => {
     productos = productos.map(p => (p.id === idProducto ? { ...p, ...productoActualizado } : p));
     fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
       if (err) return res.status(500).send('Error al guardar el producto');
+      req.app.get('io').emit('actualizarProductos', productos);
       res.json({ id: idProducto, ...productoActualizado });
     });
   });
 });
 
-// Eliminar un producto
 router.delete('/:idProducto', (req, res) => {
   const { idProducto } = req.params;
   fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
@@ -67,6 +64,7 @@ router.delete('/:idProducto', (req, res) => {
     productos = productos.filter(p => p.id !== idProducto);
     fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
       if (err) return res.status(500).send('Error al guardar el producto');
+      req.app.get('io').emit('actualizarProductos', productos);
       res.status(204).send();
     });
   });

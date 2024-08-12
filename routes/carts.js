@@ -6,7 +6,6 @@ const { v4: generarUUID } = require('uuid');
 
 const rutaArchivoCarritos = path.join(__dirname, '../data/carts.json');
 
-// Crear un nuevo carrito
 router.post('/', (req, res) => {
   const carritoNuevo = { id: generarUUID(), productos: [] };
   fs.readFile(rutaArchivoCarritos, 'utf8', (err, datos) => {
