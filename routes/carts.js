@@ -2,21 +2,35 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { v4: generarUUID } = require('uuid');
 
-const rutaArchivoCarritos = path.join(__dirname, '../data/carts.json');
+// Ruta para eliminar un producto específico de un carrito
+router.delete('/:cid/products/:pid', (req, res) => {
+  const cartId = req.params.cid;
+  const productId = req.params.pid;
 
-router.post('/', (req, res) => {
-  const carritoNuevo = { id: generarUUID(), productos: [] };
-  fs.readFile(rutaArchivoCarritos, 'utf8', (err, datos) => {
-    if (err) return res.status(500).send('Error al leer el archivo de carritos');
-    const carritos = JSON.parse(datos);
-    carritos.push(carritoNuevo);
-    fs.writeFile(rutaArchivoCarritos, JSON.stringify(carritos, null, 2), (err) => {
-      if (err) return res.status(500).send('Error al guardar el carrito');
-      res.status(201).json(carritoNuevo);
-    });
-  });
+  // Lógica para eliminar el producto del carrito basado en el ID
 });
 
-module.exports = router;
+// Ruta para actualizar el carrito completo
+router.put('/:cid', (req, res) => {
+  const cartId = req.params.cid;
+  const products = req.body.products;
+
+  // Lógica para actualizar el carrito completo
+});
+
+// Ruta para actualizar la cantidad de un producto en el carrito
+router.put('/:cid/products/:pid', (req, res) => {
+  const cartId = req.params.cid;
+  const productId = req.params.pid;
+  const { quantity } = req.body;
+
+  // Lógica para actualizar la cantidad del producto
+});
+
+// Ruta para eliminar todos los productos del carrito
+router.delete('/:cid', (req, res) => {
+  const cartId = req.params.cid;
+
+  // Lógica para eliminar todos los productos del carrito
+});
