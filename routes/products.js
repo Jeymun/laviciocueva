@@ -2,72 +2,43 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { v4: generarUUID } = require('uuid');
-
-const rutaArchivoProductos = path.join(__dirname, '../data/products.json');
 
 router.get('/', (req, res) => {
-  const { limite } = req.query;
-  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
-    if (err) return res.status(500).send('Error al leer el archivo de productos');
-    let productos = JSON.parse(datos);
-    if (limite) productos = productos.slice(0, parseInt(limite, 10));
-    res.json(productos);
-  });
-});
+  const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page) || 1;
+  const sort = req.query.sort === 'asc' ? 1 : req.query.sort === 'desc' ? -1 : null;
+  const query = req.query.query || null;
 
-router.get('/:idProducto', (req, res) => {
-  const { idProducto } = req.params;
-  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
+  fs.readFile(path.join(__dirname, '../data/products.json'), 'utf8', (err, data) => {
     if (err) return res.status(500).send('Error al leer el archivo de productos');
-    const productos = JSON.parse(datos);
-    const producto = productos.find(p => p.id === idProducto);
-    if (!producto) return res.status(404).send('Producto no encontrado');
-    res.json(producto);
-  });
-});
+    
+    let products = JSON.parse(data);
+    
+    if (query) {
+      products = products.filter(p => p.category === query || p.status.toString() === query);
+    }
+    
+    if (sort !== null) {
+      products.sort((a, b) => (a.price - b.price) * sort);
+    }
+    
+    // 
+    const totalProducts = products.length;
+    const totalPages = Math.ceil(totalProducts / limit);
+    const paginatedProducts = products.slice((page - 1) * limit, page * limit);
 
-router.post('/', (req, res) => {
-  const productoNuevo = { ...req.body, id: generarUUID(), estado: true };
-  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
-    if (err) return res.status(500).send('Error al leer el archivo de productos');
-    const productos = JSON.parse(datos);
-    productos.push(productoNuevo);
-    fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
-      if (err) return res.status(500).send('Error al guardar el producto');
-      req.app.get('io').emit('actualizarProductos', productos);
-      res.status(201).json(productoNuevo);
+    res.json({
+      status: 'success',
+      payload: paginatedProducts,
+      totalPages: totalPages,
+      prevPage: page > 1 ? page - 1 : null,
+      nextPage: page < totalPages ? page + 1 : null,
+      page: page,
+      hasPrevPage: page > 1,
+      hasNextPage: page < totalPages,
+      prevLink: page > 1 ? `/api/products?limit=${limit}&page=${page - 1}` : null,
+      nextLink: page < totalPages ? `/api/products?limit=${limit}&page=${page + 1}` : null,
     });
   });
 });
-
-router.put('/:idProducto', (req, res) => {
-  const { idProducto } = req.params;
-  const productoActualizado = req.body;
-  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
-    if (err) return res.status(500).send('Error al leer el archivo de productos');
-    let productos = JSON.parse(datos);
-    productos = productos.map(p => (p.id === idProducto ? { ...p, ...productoActualizado } : p));
-    fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
-      if (err) return res.status(500).send('Error al guardar el producto');
-      req.app.get('io').emit('actualizarProductos', productos);
-      res.json({ id: idProducto, ...productoActualizado });
-    });
-  });
-});
-
-router.delete('/:idProducto', (req, res) => {
-  const { idProducto } = req.params;
-  fs.readFile(rutaArchivoProductos, 'utf8', (err, datos) => {
-    if (err) return res.status(500).send('Error al leer el archivo de productos');
-    let productos = JSON.parse(datos);
-    productos = productos.filter(p => p.id !== idProducto);
-    fs.writeFile(rutaArchivoProductos, JSON.stringify(productos, null, 2), (err) => {
-      if (err) return res.status(500).send('Error al guardar el producto');
-      req.app.get('io').emit('actualizarProductos', productos);
-      res.status(204).send();
-    });
-  });
-});
-
 module.exports = router;
